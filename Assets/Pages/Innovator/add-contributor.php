@@ -1,15 +1,17 @@
 <?php
+require_once '../Classes/Innovator.php';
 session_start();
 if (isset($_SESSION['username'])) {
     $username = $_SESSION['username'];
     $role = $_SESSION['role'];
-    if ($role != 'Innovator' && $role != "Admin"  && $role != "Moderator") {
-        echo "<script>window.location.href='../../../index.php';</script>";
+    $innovator = new Innovator($username, null);
+    if ($role != 'Innovator' && $role != "Admin") {
+        echo "<script>window.location.href='../../../sign-in.php';</script>";
         exit();
     }
 } else {
     // header("Location: ../../../index.php");
-    echo "<script>window.location.href='../../../index.php';</script>";
+    echo "<script>window.location.href='../../../sign-in.php';</script>";
     exit();
 }
 $pid = $_SESSION['pid'];
@@ -25,18 +27,49 @@ include '../dbconnection.php';
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>IMS - Add Contributors</title>
+
+    <style>
+        .back-button {
+            display: inline-flex;
+            align-items: center;
+            overflow: hidden;
+            width: 40px;
+            transition: width 0.8s ease-in-out, background-color 0.3s ease;
+            white-space: nowrap;
+        }
+
+        .back-button:hover {
+            width: auto;
+            background-color: #0056b3;
+        }
+
+        .back-text {
+            opacity: 0;
+            margin-left: 8px;
+            transition: opacity 0.1s ease-in-out;
+        }
+
+        .back-button:hover .back-text {
+            opacity: 1;
+        }
+    </style>
 </head>
 
 <body class="bg-dark text-white">
-    <?php 
+    <?php
     if ($role == 'Innovator') {
         include './innovator-nav.php';
-    } elseif ($role == 'Admin' || $role == "Moderator"){
+    } elseif ($role == 'Admin') {
         include '../Admin/admin-nav.php';
     }
     ?>
 
     <div class="container">
+        <a href="./project-details.php?pid=<?= $_GET['pid'] ?>" class="btn btn-primary mt-3 back-button"
+            id="backToProject">
+            <i class="fa fa-arrow-left" aria-hidden="true"></i>
+            <span id="backText" class="back-text color-wh"> Back to Project</span>
+        </a>
 
         <?php
         $status = isset($_GET['removecontributor']) ? htmlspecialchars($_GET['removecontributor']) : "";
@@ -93,42 +126,34 @@ include '../dbconnection.php';
                                 <th class="bg-secondary">Role</th>
                                 <th class="bg-secondary">View Profile</th>
                                 <th class="bg-secondary">Remove</th>
-                                <?php if ($role == 'Admin' || $role == "Moderator") {
-                                    echo "<th class='bg-secondary'>Added By</th>";
-                                } ?>
                             </tr>
                         </thead>
                         <tbody>
                             <?php
-                            $sql = "SELECT * FROM contributors WHERE pid = '$pid';";
-                            $result = mysqli_query($connection, $sql);
-                            if (mysqli_num_rows($result) > 0) {
+                            $result = $innovator->getContributorsWithPID($connection, $pid);
+                            // $sql = "SELECT * FROM contributors WHERE pid = '$pid';";
+                            // $result = mysqli_query($connection, $sql);
+                            if ($result != "0") {
                                 while ($row = mysqli_fetch_assoc($result)) {
                                     echo "<tr>";
                                     echo "<td>" . $row['userName'] . "</td>";
-                                    // }                            
-                                    $sql1 = "SELECT fname, lname, role FROM users WHERE userName = '".$row['userName']."';";
-                                    $result1 = mysqli_query($connection, $sql1);
+                                    // }       
+                                    $result1 = $innovator->getUserDetailsFromAUsername($connection, $row['userName']);
+                                    // $sql1 = "SELECT fname, lname, role FROM users WHERE userName = '" . $row['userName'] . "';";
+                                    // $result1 = mysqli_query($connection, $sql1);
                                     $row1 = mysqli_fetch_assoc($result1);
                                     echo "<td>" . $row1['fname'] . " " . $row1['lname'] . "</td>";
                                     echo "<td>" . $row1['role'] . "</td>";
                                     echo "<td><a class='btn btn-primary text-center d-block' href='./view-profile.php?userName=" . $row['userName'] . "'>View</a></td>";
-                                    $sql2 = "SELECT role FROM users WHERE userName = '".$row['addedBy']."';";
-                                    $result2 = mysqli_query($connection, $sql2);
+                                    $result2 = $innovator->getIfAddedByAnAdmin($connection, $row['addedBy']);
+                                    // $sql2 = "SELECT role FROM users WHERE userName = '" . $row['addedBy'] . "';";
+                                    // $result2 = mysqli_query($connection, $sql2);
                                     $row2 = mysqli_fetch_assoc($result2);
-                                    if ($row2['role'] == 'Innovator' || $role == 'Admin' || $role == "Moderator") {
+                                    if ($row2['role'] == 'Innovator' || $role == 'Admin') {
                                         echo "<td><a class='btn btn-danger text-center d-block' href='./remove-contributor.php?userName=" . $row['userName'] . "&pid=" . $pid . "'>Remove</a></td>";
-                                        if ($role == 'Admin' || $role == "Moderator") {
-                                            if ($row2['role'] == 'Innovator')                                            
-                                           echo "<td><p class='text-center'>".$row['addedBy']."</p></td>";
-                                        if ($row2['role'] == 'Admin' || $row2['role'] == 'Moderator')                                            
-                                           echo "<td><p class='text-center bg-danger'>".$row['addedBy']."</p></td>";
-                                        }
-                                        echo "";
                                     } else {
                                         echo "<td><p class='text-center'>Unable to remove contributor due to<br>added by an admin</p></td>";
                                     }
-                                    // echo "<td><a class='btn btn-danger text-center d-block' href='./remove-contributor.php?userName=" . $row['userName'] . "&pid=" . $pid . "'>Remove</a></td>";
                                     echo "</tr>";
                                 }
                             } else {
@@ -154,29 +179,6 @@ include '../dbconnection.php';
 
 <?php
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    $cname = $_POST['cname'];
-    // echo $cname . "<br>";
-    $sql = "SELECT * FROM users WHERE BINARY userName = '$cname'";
-    $result = mysqli_query($connection, $sql);
-    // echo "result :" . $result;
-    // echo mysqli_num_rows($result) . "<br>";
-    // echo "pid : " . $_SESSION['pid'] . "<br>";
-    if (mysqli_num_rows($result) > 0) {
-        $sql = "INSERT INTO contributors (pid, userName,addedBy) VALUES ('$pid', '$cname','$username')";
-        $result = mysqli_query($connection, $sql);
-        if ($result) {
-            echo "<script>window.location.href='./add-contributor.php?addcontributor=success';</script>";
-            // echo "<script>alert('Contributor Added Successfully');</script>";
-            // echo "<script>window.location.href='add-contributor.php?pid=" . $_SESSION['pid'] . "';</script>";
-        } else {
-            echo "<script>window.location.href='./add-contributor.php?addcontributor=error';</script>";
-            // echo "<script>alert('Failed to Add Contributor');</script>";
-            // echo "<script>window.location.href='add-contributor.php?pid=" . $_SESSION['pid'] . "';</script>";
-        }
-    } else {
-        echo "<script>window.location.href='./add-contributor.php?addcontributor=error';</script>";
-        // echo "<script>alert('Contributor Not Found');</script>";
-        // echo "<script>window.location.href='./add-contributor.php?pid=" . $_SESSION['pid'] . "';</script>";
-    }
+    $innovator->addAContributor($connection, $_POST['cname'], $pid, $username);
 }
 ?>

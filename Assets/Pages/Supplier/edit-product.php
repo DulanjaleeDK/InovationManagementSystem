@@ -1,14 +1,15 @@
 <?php
+require_once '../Classes/Item.php';
 session_start();
 if (isset($_SESSION['username'])) {
     $username = $_SESSION['username'];
     $role = $_SESSION['role'];
     if ($role != 'Supplier') {
-        echo "<script>window.location.href='../../../index.php';</script>";
+        echo "<script>window.location.href='../../../sign-in.php';</script>";
         exit();
     }
 } else {
-    echo "<script>window.location.href='../../../index.php';</script>";
+    echo "<script>window.location.href='../../../sign-in.php';</script>";
     exit();
 }
 
@@ -62,12 +63,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['prodName'], $_POST['pr
         }
     }
 
-    $sql = "UPDATE items SET prodName = '$prodName', prodDis = '$prodDis', prodPrice = '$prodPrice', prodImg = '$prodImg' WHERE prodId = '$prodId' AND userName = '$username'";
-    if (mysqli_query($connection, $sql)) {
-        $successMessage = "Product updated successfully.";
-    } else {
-        echo "Error updating product: " . mysqli_error($connection);
-    }
+    $item = new Item($prodId, $prodName, $prodDis, $prodImg, $username);
+    $successMessage = $item->update($connection, $prodPrice);
+
+    // $sql = "UPDATE items SET prodName = '$prodName', prodDis = '$prodDis', prodPrice = '$prodPrice', prodImg = '$prodImg' WHERE prodId = '$prodId' AND userName = '$username'";
+    // if (mysqli_query($connection, $sql)) {
+    //     $successMessage = "Product updated successfully.";
+    // } else {
+    //     echo "Error updating product: " . mysqli_error($connection);
+    // }
 }
 ?>
 
@@ -86,13 +90,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['prodName'], $_POST['pr
         <div>
             <h2 class="text-center">Edit product</h2>
             <?php if ($successMessage): ?>
-            <div class="alert alert-success">
-                <?php echo $successMessage; ?>
-            </div>
+                <div class="alert alert-success">
+                    <?php echo $successMessage; ?>
+                </div>
             <?php endif; ?>
             <div class="card mt-4 border-white border-3 bg-dark text-white">
                 <div class="card-body">
-                    <form action="" method="POST">
+                    <form action="" method="POST" id="selectAProduct">
                         <div class="form-floating mb-3 mt-3">
                             <select class="form-select mt-3" required name="prodid" id="pid"
                                 onchange="this.form.submit()">
@@ -102,11 +106,17 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['prodName'], $_POST['pr
                                 echo "<option disabled selected></option>";
                                 if ($result && mysqli_num_rows($result) > 0) {
                                     while ($row = mysqli_fetch_assoc($result)) {
-                                        echo "<option value='" . $row['prodId'] . "'>" . $row['prodId'] . " - " . $row['prodName'] . "</option>";
+                                        if (isset($_GET['prodID']) && !empty($_GET['prodID'])) {
+                                            if ($_GET['prodID'] == $row['prodId']) {
+                                                echo "<option value='" . $row['prodId'] . "'>" . $row['prodId'] . " - " . $row['prodName'] . " - " . $row['status'] . "</option>";
+                                            }
+                                        } else
+                                            echo "<option value='" . $row['prodId'] . "'>" . $row['prodId'] . " - " . $row['prodName'] . " - " . $row['status'] . "</option>";
                                     }
                                 } else {
                                     echo "<option disabled>--Products not found--</option>";
                                 }
+
                                 ?>
                             </select>
                             <label for="pid">Select Product</label>

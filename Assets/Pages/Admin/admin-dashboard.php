@@ -3,16 +3,18 @@ session_start();
 if (isset($_SESSION['username'])) {
     $username = $_SESSION['username'];
     $role = $_SESSION['role'];
-    if ($role != 'Admin' && $role != 'Moderator') {
-        echo "<script>window.location.href='../../../index.php';</script>";
+    if ($role != 'Admin') {
+        echo "<script>window.location.href='../../../sign-in.php';</script>";
         exit();
     }
 } else {
     // header("Location: ../../../index.php");
-    echo "<script>window.location.href='../../../index.php';</script>";
+    echo "<script>window.location.href='../../../sign-in.php';</script>";
     exit();
 }
 include '../dbconnection.php';
+require_once "../Classes/Administrator.php";
+$admin = new Administrator(null, null);
 ?>
 
 <!DOCTYPE html>
@@ -58,18 +60,10 @@ include '../dbconnection.php';
         updateDate(); // Initial call to set the date immediately
     </script>
 
-    <?php if ($_SESSION['role'] == "Admin"): ?>
-        <div class="container text-center">
-            <h1>IMS - Dashboard</h1>
-            <!-- <p>This is the Admin Dashboard. You can create manage Admin profiles, projects</p> -->
-        </div>
-
-    <?php elseif ($_SESSION['role'] == "Moderator"): ?>
-        <div class="container text-center">
-            <h1>Moderator Dashboard</h1>
-            <!-- <p>This is the Moderator Dashboard. You can manage projects and solve problems of coustomers.</p> -->
-        </div>
-    <?php endif; ?>
+    <div class="container text-center">
+        <h1>IMS - Dashboard</h1>
+        <!-- <p>This is the Admin Dashboard. You can create manage Admin profiles, projects</p> -->
+    </div>
 
     <div class="container mt-4">
         <div class="row">
@@ -80,12 +74,18 @@ include '../dbconnection.php';
                         <h1 class="card-text">
                             <?php
                             $sql = "SELECT * FROM project";
-                            $result = $connection->query($sql);
-                            if ($result) {
+                            $result = $admin->sqlExecutor($connection, $sql);
+                            if ($result != null) {
                                 echo $result->num_rows;
                             } else {
                                 echo "Error executing query: " . $connection->error;
                             }
+                            // $result = $connection->query($sql);
+                            // if ($result) {
+                            //     echo $result->num_rows;
+                            // } else {
+                            //     echo "Error executing query: " . $connection->error;
+                            // }
                             ?>
                         </h1>
                     </div>
@@ -97,8 +97,8 @@ include '../dbconnection.php';
                         <h3 class="card-title ">Total Users</h3>
                         <h1 class="card-text">
                             <?php
-                            $sql = "SELECT * FROM users WHERE role!='Admin' AND role!='Moderator'";
-                            $result = $connection->query($sql);
+                            $sql = "SELECT * FROM users WHERE role!='Admin'";
+                            $result = $admin->sqlExecutor($connection, $sql);
                             if ($result) {
                                 echo $result->num_rows;
                             } else {
@@ -116,7 +116,7 @@ include '../dbconnection.php';
                         <h1 class="card-text">
                             <?php
                             $sql = "SELECT * FROM contributors";
-                            $result = $connection->query($sql);
+                            $result = $admin->sqlExecutor($connection, $sql);
                             if ($result) {
                                 echo $result->num_rows;
                             } else {
@@ -137,8 +137,8 @@ include '../dbconnection.php';
                         <div class="card-text">
                             <h1 class="card-text" id="activeUsers">
                                 <?php
-                                $sql = "SELECT * FROM users WHERE role!='Admin' AND role!='Moderator' AND active='1'";
-                                $result = $connection->query($sql);
+                                $sql = "SELECT * FROM users WHERE role!='Admin' AND active='1'";
+                                $result = $admin->sqlExecutor($connection, $sql);
                                 if ($result) {
                                     echo $result->num_rows;
                                 } else {

@@ -1,20 +1,20 @@
 <?php
+require_once "../Classes/Innovator.php";
 session_start();
 if (isset($_SESSION['username'])) {
     $username = $_SESSION['username'];
     $role = $_SESSION['role'];
+    $innovator = new Innovator($username, null);
 } else {
     echo "<script>window.location.href='../../../index.php';</script>";
     exit();
 }
 include '../dbconnection.php';
 $viewUserName = $_GET['userName'];
-$query = "SELECT * FROM users WHERE userName = '$viewUserName'";
-$result = mysqli_query($connection, $query);
-
+$result = $innovator->getUserDetailsFromAUsername($connection, $viewUserName);
 if ($result && mysqli_num_rows($result) > 0) {
     $row = mysqli_fetch_assoc($result);
-    if ($row['role'] == 'Admin' || $row['role'] == 'Moderator') {
+    if ($row['role'] == 'Admin') {
         $msj = "User not found";
         echo "<script>window.location.href='../error.php?msj=$msj';</script>";
         exit();
@@ -31,15 +31,7 @@ if ($result && mysqli_num_rows($result) > 0) {
     exit();
 }
 
-$query = "SELECT * FROM profilePic WHERE userName = '$viewUserName'";
-$result = mysqli_query($connection, $query);
-if ($result && mysqli_num_rows($result) > 0) {
-    $row = mysqli_fetch_assoc($result);
-    $viewerprofilePic = "../../img/profilePics/" . $row['image_url'];
-    $_SESSION['image_url'] = $row['image_url'];
-} else {
-    $viewerprofilePic = "https://img.freepik.com/free-vector/blue-circle-with-white-user_78370-4707.jpg?t=st=1716576375~exp=1716579975~hmac=be6ca419460bee7ca7e72244b5462a3ce71eff32f244d69b7646c4e984e6f4ee&w=740";
-}
+$viewerprofilePic = $innovator->viewProfileGetProfilePic($connection, $viewUserName);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -65,12 +57,14 @@ if ($result && mysqli_num_rows($result) > 0) {
 
 <body class="bg-dark text-white">
     <?php
-    if ($role == 'Admin' || $role == "Moderator")
+    if ($role == 'Admin')
         include '../Admin/admin-nav.php';
     elseif ($role == 'Innovator')
         include './innovator-nav.php';
     elseif ($role == 'Supplier')
         include '../Supplier/supplier-nav.php';
+    elseif ($role == 'Buyer')
+        include '../Buyer/buyer-nav.php';
     ?>
     <div class="container">
         <?php
@@ -124,96 +118,98 @@ if ($result && mysqli_num_rows($result) > 0) {
                         </div>
                     </div>
                 </div>
-                <div class="card mt-4 border-white border-3 bg-dark text-white">
-                    <div class="card-body">
-                        <h2>Skills</h2>
-                        <div>
-                            <?php
-                            $sql = "SELECT * FROM user_skills WHERE userName = '$viewUserName'";
-                            $result1 = mysqli_query($connection, $sql);
-                            if (mysqli_num_rows($result1) > 0) {
-                                while ($row1 = mysqli_fetch_assoc($result1)) {
-                                    echo "<span class='text-white badge bg-secondary me-2 mb-2 p-3' id='skill-" . $row1['id'] . "'>";
-                                    echo $row1['skill'];
-                                    echo "</span>";
-                                }
-                            }
-                            ?>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="row">
-            <div class="col-lg-12">
-                <div class="card mt-4 border-white border-3 bg-dark text-white">
-                    <div class="card-body">
-                        <div class="text-center">
-                            <div class="ratings">
+                <?php if ($role != "Buyer"): ?>
+                    <div class="card mt-4 border-white border-3 bg-dark text-white">
+                        <div class="card-body">
+                            <h2>Skills</h2>
+                            <div>
                                 <?php
-                                $ratingCount = 0;
-                                $ratingvalueCount = 0;
-                                $maxRating = 5;
-
-                                $query = "SELECT * FROM user_ratings WHERE userName = '$viewUserName'";
-                                $result = mysqli_query($connection, $query);
-                                if ($result && mysqli_num_rows($result) > 0) {
-                                    while ($row = mysqli_fetch_assoc($result)) {
-                                        $ratingvalueCount += $row['rating'];
-                                        $ratingCount++;
+                                $result1 = $innovator->viewProfileGetUserSkills($connection, $viewUserName);
+                                if ($result1 != "0") {
+                                    while ($row1 = mysqli_fetch_assoc($result1)) {
+                                        echo "<span class='text-white badge bg-secondary me-2 mb-2 p-3' id='skill-" . $row1['id'] . "'>";
+                                        echo $row1['skill'];
+                                        echo "</span>";
                                     }
                                 }
-                                if ($ratingCount == 0) {
-                                    $rating = 0;
-                                } else {
-                                    $rating = $ratingvalueCount / $ratingCount;
-                                }
-                                $filledStars = floor($rating);
-                                $halfStar = ($rating - $filledStars) >= 0.5;
-                                $emptyStars = $maxRating - $filledStars - ($halfStar ? 1 : 0);
-                                echo '<h2>Rating<span class="ms-3 h5">' . $rating . '/' . $maxRating . '</span><br></h2>';
-                                // Filled stars
-                                for ($i = 0; $i < $filledStars; $i++) {
-                                    echo '<i class="fas fa-star"></i>';
-                                }
-
-                                // Half star
-                                if ($halfStar) {
-                                    echo '<i class="fas fa-star-half-alt"></i>';
-                                }
-
-                                // Empty stars
-                                for ($i = 0; $i < $emptyStars; $i++) {
-                                    echo '<i class="far fa-star"></i>';
-                                }
-                                echo '<p>(' . $ratingCount . ')</p>';
                                 ?>
                             </div>
                         </div>
-                        <?php if ($viewUserName != $username): ?>
-                            <h2 class="mt-3">Rate User</h2>
-                            <form action="submit-rating.php" method="POST">
-                                <div class="star-rating">
-                                    <i class="fa fa-star" data-index="0"></i>
-                                    <i class="fa fa-star" data-index="1"></i>
-                                    <i class="fa fa-star" data-index="2"></i>
-                                    <i class="fa fa-star" data-index="3"></i>
-                                    <i class="fa fa-star" data-index="4"></i>
-                                </div>
-                                <input type="hidden" name="rating" id="rating-value" value="0">
-                                <input type="hidden" name="viewUserName" value="<?php echo $viewUserName; ?>">
+                    </div>
+                <?php endif; ?>
+            </div>
+        </div>
+        <?php if ($role != "Buyer"): ?>
+            <div class="row">
+                <div class="col-lg-12">
+                    <div class="card mt-4 border-white border-3 bg-dark text-white">
+                        <div class="card-body">
+                            <div class="text-center">
+                                <div class="ratings">
+                                    <?php
+                                    $ratingCount = 0;
+                                    $ratingvalueCount = 0;
+                                    $maxRating = 5;
 
-                                <div class="form-floating mb-3 mt-3">
-                                    <textarea class="form-control" id="review" placeholder="Enter Review" name="review"
-                                        required></textarea>
-                                    <label for="review" class="text-dark">Comment</label>
-                                    <button type="submit" class="btn btn-primary mt-2">Submit Rating</button>
-                            </form>
-                        <?php endif; ?>
+                                    $result = $innovator->viewProfileGetUserRatings($connection, $viewUserName);
+                                    if ($result && mysqli_num_rows($result) > 0) {
+                                        while ($row = mysqli_fetch_assoc($result)) {
+                                            $ratingvalueCount += $row['rating'];
+                                            $ratingCount++;
+                                        }
+                                    }
+                                    if ($ratingCount == 0) {
+                                        $rating = 0;
+                                    } else {
+                                        $rating = $ratingvalueCount / $ratingCount;
+                                    }
+                                    $filledStars = floor($rating);
+                                    $halfStar = ($rating - $filledStars) >= 0.5;
+                                    $emptyStars = $maxRating - $filledStars - ($halfStar ? 1 : 0);
+                                    echo '<h2>Rating<span class="ms-3 h5">' . $rating . '/' . $maxRating . '</span><br></h2>';
+                                    // Filled stars
+                                    for ($i = 0; $i < $filledStars; $i++) {
+                                        echo '<i class="fas fa-star"></i>';
+                                    }
+
+                                    // Half star
+                                    if ($halfStar) {
+                                        echo '<i class="fas fa-star-half-alt"></i>';
+                                    }
+
+                                    // Empty stars
+                                    for ($i = 0; $i < $emptyStars; $i++) {
+                                        echo '<i class="far fa-star"></i>';
+                                    }
+                                    echo '<p>(' . $ratingCount . ')</p>';
+                                    ?>
+                                </div>
+                            </div>
+                            <?php if ($viewUserName != $username): ?>
+                                <h2 class="mt-3">Rate User</h2>
+                                <form action="submit-rating.php" method="POST">
+                                    <div class="star-rating">
+                                        <i class="fa fa-star" data-index="0"></i>
+                                        <i class="fa fa-star" data-index="1"></i>
+                                        <i class="fa fa-star" data-index="2"></i>
+                                        <i class="fa fa-star" data-index="3"></i>
+                                        <i class="fa fa-star" data-index="4"></i>
+                                    </div>
+                                    <input type="hidden" name="rating" id="rating-value" value="0">
+                                    <input type="hidden" name="viewUserName" value="<?php echo $viewUserName; ?>">
+
+                                    <div class="form-floating mb-3 mt-3">
+                                        <textarea class="form-control" id="review" placeholder="Enter Review" name="review"
+                                            required></textarea>
+                                        <label for="review" class="text-dark">Comment</label>
+                                        <button type="submit" class="btn btn-primary mt-2">Submit Rating</button>
+                                </form>
+                            <?php endif; ?>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
+        <?php endif; ?>
         <?php if ($viewRole == 'Innovator'): ?>
             <div class="row">
                 <div class="col-lg-12">
@@ -232,8 +228,7 @@ if ($result && mysqli_num_rows($result) > 0) {
                                     </thead>
                                     <tbody>
                                         <?php
-                                        $sql = "SELECT * FROM project WHERE userName = '$viewUserName';";
-                                        $result = mysqli_query($connection, $sql);
+                                        $result = $innovator->getAllProjectsForAUsername($connection, $viewUserName);
                                         if (mysqli_num_rows($result) > 0) {
                                             while ($row = mysqli_fetch_assoc($result)) {
                                                 echo "<tr>";
@@ -276,15 +271,13 @@ if ($result && mysqli_num_rows($result) > 0) {
                                     </thead>
                                     <tbody>
                                         <?php
-                                        $sql = "SELECT * FROM contributors WHERE userName = '$viewUserName';";
-                                        $result = mysqli_query($connection, $sql);
+                                        $result = $innovator->getContributorsWithUsername($connection, $viewUserName);
                                         if (mysqli_num_rows($result) > 0) {
                                             while ($row = mysqli_fetch_assoc($result)) {
                                                 echo "<tr>";
                                                 echo "<td>" . $row['pid'] . "</td>";
 
-                                                $sql = "SELECT * FROM project WHERE pid = " . $row['pid'] . ";";
-                                                $result1 = mysqli_query($connection, $sql);
+                                                $result1 = $innovator->getProjectDetails($connection, $row['pid']);
                                                 if (mysqli_num_rows($result1) > 0) {
                                                     while ($row1 = mysqli_fetch_assoc($result1)) {
                                                         echo "<td>" . $row1['pname'] . "</td>";
@@ -317,12 +310,31 @@ if ($result && mysqli_num_rows($result) > 0) {
                         <h1 class="text-center mb-3">My Products</h1>
                         <div class="row">
                             <?php
-                            $sql = "SELECT * FROM items WHERE userName = '$viewUserName';";
-                            $result = mysqli_query($connection, $sql);
-                            if (mysqli_num_rows($result) > 0) {
+                            $viewUsernameEqualsUsername = false;
+                            if ($viewUserName == $username) {
+                                $viewUsernameEqualsUsername = true;
+                            }
+                            $result = $innovator->getProducts($connection, $viewUserName, $viewUsernameEqualsUsername);
+                            if ($result != "0") {
                                 while ($row = mysqli_fetch_assoc($result)) {
                                     echo '<div class="col-md-6 col-lg-4 mb-4">';
                                     echo '<div class="card border-3 border-white bg-dark text-white h-100">';
+                                    if ($viewUserName == $username) {
+                                        echo '<div class="text-end p-2">';
+                                        switch ($row["status"]) {
+                                            case "Approved":
+                                                echo '<div class="badge bg-success">' . $row["status"] . '</div>';
+                                                break;
+                                            case "Pending":
+                                                echo '<div class="badge bg-warning">' . $row["status"] . '</div>';
+                                                break;
+                                            case "Rejected":
+                                                echo '<div class="badge bg-danger">' . $row["status"] . '</div>';
+                                                break;
+                                        }
+                                        echo '</div>';
+                                    }
+
                                     echo '<img src="' . $row["prodImg"] . '" alt="Product Image" class="card-img-top" style="object-fit: cover; height: 200px;">';
                                     echo '<div class="card-body d-flex flex-column">';
                                     echo '<h2 class="card-title">' . $row["prodName"] . '</h2>';

@@ -1,17 +1,21 @@
 <?php
+
+require_once "../Classes/Administrator.php";
 session_start();
 if (isset($_SESSION['username'])) {
     $username = $_SESSION['username'];
     $role = $_SESSION['role'];
-    if ($role != 'Admin' && $role != 'Moderator') {
-        echo "<script>window.location.href='../../../index.php';</script>";
+    if ($role != 'Admin') {
+        echo "<script>window.location.href='../../../sign-in.php';</script>";
         exit();
     }
 } else {
     // header("Location: ../../../index.php");
-    echo "<script>window.location.href='../../../index.php';</script>";
+    echo "<script>window.location.href='../../../sign-in.php';</script>";
     exit();
 }
+
+$admin = new Administrator(null, null);
 ?>
 
 <!DOCTYPE html>
@@ -81,8 +85,11 @@ if (isset($_SESSION['username'])) {
                                     $sql .= " WHERE $filter LIKE '%$keyword%'";
                                 }
                             }
-                            $result1 = mysqli_query($connection, $sql);
-                            if (mysqli_num_rows($result1) > 0) {
+
+                            $result1 = $admin->sqlExecutor($connection, $sql);
+                            // $result1 = mysqli_query($connection, $sql);
+                            // if (mysqli_num_rows($result1) > 0) {
+                            if ($result1 != null) {
                                 while ($row1 = mysqli_fetch_assoc($result1)) {
                                     echo "<tr>";
                                     echo "<td>" . $row1['pid'] . "</td>";
@@ -98,8 +105,8 @@ if (isset($_SESSION['username'])) {
                                     echo "<td><a href='../Innovator/project-details.php?pid=" . $row1['pid'] . "' class='btn btn-primary text-center d-block'>View</a></td>";
                                     echo "</tr>";
                                 }
-                            }else
-                            echo "<tr><td colspan='5' class='text-center'>No Projects Found</td></tr>";
+                            } else
+                                echo "<tr><td colspan='5' class='text-center'>No Projects Found</td></tr>";
                             ?>
                         </tbody>
                     </table>
@@ -109,4 +116,5 @@ if (isset($_SESSION['username'])) {
     </div>
 </body>
 <?php include '../footer.php'; ?>
+
 </html>

@@ -23,6 +23,22 @@ session_start();
 </head>
 
 <body class="bg-dark">
+    <div class="py-3">
+        <div class="ms-5 me-5 d-flex justify-content-between align-items-center">
+            <div class="logo h3 mb-0 text-white">
+                <img src="../img/LogoWhite.png" alt="Logo" style="height: 40px; margin-right: 20px;">
+                Eureka Innovation Management System
+            </div>
+            <nav>
+                <ul class="nav">
+                    <li class="nav-item"><a class="nav-link text-white" href="../../index.php">Home</a></li>
+                    <li class="nav-item"><a class="nav-link text-white" href="../../sign-in.php">Sign In</a></li>
+                    <li class="nav-item"><a class="nav-link text-white" href="./signup.php">Sign Up</a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    </div>
     <div class="container mt-5">
         <div class="card p-5 bg-dark border-white border-3">
             <div class="mt-2 p-3 bg-primary text-white rounded">
@@ -171,7 +187,7 @@ session_start();
 <?php
 include './dbconnection.php';
 include './password.php';
-require_once './signup-process.php';
+require_once './Classes/User.php';
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     // $file = $_FILES["file"];
@@ -183,17 +199,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $repassword = $_POST["repassword"];
     $role = $_POST["role"];
 
-    $signup = new Signup($username, $firstname, $lastname, $email, $role, $password, $repassword);
-    $signup->signup($connection);
-    if ($signup->getSuccessStatusOfUserRegister()) {
-        $_SESSION['username'] = $signup->getUsername();
-        $_SESSION['role'] = $signup->getRole();
-        // $_SESSION['pass'] = $this->password;
-        $msg = "User Registered Successfully. Edit your profile to add more details.";
-        echo "<script>window.location.href='./Admin/profile.php?status=success&msg=" . $msg . "';</script>";
-    } else {
-        echo '<script>alert("User Register Failed.");</script>';
-    }
-    $connection->close();
+    $signup = new User($username, $password, $role, $firstname, $lastname, $email, $repassword);
+    $signup->register($connection);
 }
 ?>
