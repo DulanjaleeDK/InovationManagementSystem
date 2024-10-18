@@ -195,7 +195,7 @@ require './Assets/Pages/dbconnection.php';
     </div>
 
     <!---Tabale section -->
-    <!-- <section>
+    <section>
         <div class="container w-50">
             <h2 class="text-center mb-4">Roles and Benefits</h2>
             <div>
@@ -244,6 +244,44 @@ require './Assets/Pages/dbconnection.php';
                         </td>
                     </tr>
                 </table>
+            </div>
+        </div>
+    </section>
+
+    <!-- User Enrollment Section -->
+    <section class="enrollment py-5 bg-dark">
+        <div class="container">
+            <h2 class="text-center text-white">User Enrollments</h2>
+            <div class="row mt-4">
+                <?php
+
+                // Query to count roles for the current user
+                $sql = "SELECT role, COUNT(*) as count FROM users WHERE role != 'admin' GROUP BY role;";
+                $result = $connection->query($sql);
+
+                // Check if there are results and fetch them
+                if ($result->num_rows > 0) {
+                    // Output data for each role type
+                    while ($row = $result->fetch_assoc()) {
+                        echo '<div class="col-md-3 mb-3">';
+                        echo '<div class="card h-100 bg-dark text-white border-2 border-white">';
+                        echo '<div class="card-body text-center">';
+                        echo '<h3 class="card-title ">' . htmlspecialchars($row["role"]) . '</h3>';
+                        echo '<p class="card-text h3">' . htmlspecialchars($row["count"]) . '+</p>';
+                        echo '</div>';
+                        echo '</div>';
+                        echo '</div>';
+                    }
+                } else {
+                    echo '<div class="col-md-12 mb-3">';
+                    echo '<div class="card h-100 bg-dark text-white border-2 border-white">';
+                    echo '<div class="card-body text-center">';
+                    echo '<p class="card-text">No enrollments found.</p>';
+                    echo '</div>';
+                    echo '</div>';
+                    echo '</div>';
+                }
+                ?>
             </div>
         </div>
     </section>
